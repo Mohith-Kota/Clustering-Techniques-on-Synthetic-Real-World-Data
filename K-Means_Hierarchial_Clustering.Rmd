@@ -1,0 +1,150 @@
+
+```{r}
+# Importing Data and Preprocessing
+t1d1 <- read.csv("Data1.csv")
+x<-t1d1[2:4]
+
+# Finding the optimal number of Clusters
+set.seed(4)
+wcss <- vector()
+for(i in 1:10) wcss[i]<- sum(kmeans(x,i)$withinss)
+
+library(ggplot2)
+plot(1:10,wcss,type="b",main = paste('cluster'),xlab="clusters",ylab = "wcss")
+
+# Visualizing the initial distribution of data points
+s3d <- with(t1d1, scatterplot3d(t1d1$X1, t1d1$X2, t1d1$X3, main="Dataset1",
+                                 xlab = "X1",
+                                 ylab = "X2",
+                                 zlab = "X3",
+                                 pch = 16, color=as.numeric(t1d1$Class)))
+
+# Cluster Count using Silhouette method
+fviz_nbclust(x,kmeans,method='silhouette')
+
+library(NbClust)
+library(ClusterR)
+
+# K-means Clustering Implementation
+set.seed(15)
+kmc<-kmeans(x,7,iter.max = 30,nstart = 1)
+t1d1$km<-kmc$cluster
+
+# Hierarchical Clustering Implementation
+hcc<- hclust(dist(x),method = "centroid")
+plot(hcc)
+t1d1$hc<-cutree(hcc,7)
+
+library(gtools)
+library(factoextra)
+
+# Coloring data points
+fviz_cluster(list(data=x,cluster=t1d1$km),geom="point")
+fviz_cluster(list(data=x,cluster=t1d1$hc),geom="point")
+
+
+# External Validation using Jaccard Index
+external_validation(t1d1$Class,t1d1$km,method = "jaccard_index", summary_stats = TRUE)
+external_validation(t1d1$Class,t1d1$hc,method = "jaccard_index", summary_stats = TRUE)
+```
+
+```{r}
+t2<- read.csv("WI.csv")
+
+library(stringr)
+
+# Data Cleaning
+t2$GDP<- (str_replace_all(t2$GDP,"\\$",""))
+t2$Business.Tax.Rate <- as.numeric(str_replace_all(t2$Business.Tax.Rate,"\\%",""))
+t2$Health.Exp.Capita<- as.numeric(str_replace_all(t2$Health.Exp.Capita,"\\$",""))
+t2$GDP<-as.numeric(gsub(",","",t2$GDP))
+t2[t2==""]<- NA
+
+# Null count
+for (i in 1:18) {
+  a<- sum(is.na(t2[,i]))
+  print(a)
+}
+t3<-t2
+
+# Data Normalization
+t2<-as.data.frame(scale(t2[1:18]))
+
+# Removing unwanted columns
+t2 = subset(t2, select = -c(4,11))
+t3 = subset(t3, select = -c(4,11))
+
+# Removing rows with Null values
+t2<-na.omit(t2)
+t3<-na.omit(t3)
+
+library(NbClust)
+library(factoextra)
+
+# K-means WCSS ( Within-Cluster Sum of Square )
+
+fviz_nbclust(t2, kmeans, method = "wss")
+km.output <- kmeans(t2,centers=2, nstart = 100)
+print(km.output)
+
+# K-means Dunn Index Implementation
+library(clValid)
+set.seed(5)
+dunn(clusters = km.output$cluster, Data = t2)
+
+# K-means Silhouette Index Implementation
+library(cluster)
+set.seed(5)
+dis=dist(t2)^2
+sil<-silhouette(km.output$cluster,dis)
+plot(sil)
+
+# Hierarchial Clustering Implementation 
+hcc<- hclust(dist(t2),method = "centroid")
+plot(hcc)
+a<-cutree(hcc,2)
+
+# Hierarchial Clustering Silhouette Index Implementation
+sil<-silhouette(a,dis)
+plot(sil)
+
+# Hierarchial Clustering Dunn Index Implementation
+dunn(clusters = a, Data = t2)
+plot(x[,])
+
+
+
+```
+Got better value of Silhouette and Dunn index for Hierarchical clustering
+compared to K-means clustering. Hence Hierarchical clustering is better
+method for given Data.
+
+```{r}
+
+#List of countries by Clusters.
+t4<-data.frame(km.output$cluster,t3$Country, t3$Region)
+```
+
+
+3 Scatter plots with 3 pairs of factors.
+
+```{r}
+
+#GDP VS URBAN POPULATION
+
+ggplot(t3,aes(x=GDP, y=Population.Urban),1)+geom_point()+labs(x="GDP",y = "Population.Urban", title = "GDP vs Population.Urban", color = TRUE)
+
+
+#Life Expectancy Female VS MALE
+
+ggplot(t3,aes(x=Life.Expectancy.Female, y=Life.Expectancy.Male),1)+geom_point()+labs(x="Life.Expectancy.Female",y = "Life.Expectancy.Male", title = "Life Expectancy Female VS MALE
+", color = TRUE)
+
+#Infant mortality VS Population.Urban
+
+ggplot(t3,aes(x=Population.Urban, y=Infant.Mortality.Rate),1)+geom_point()+labs(x="Population.Urban",y = "Infant.Mortality.Rate", title = "Infant mortality VS Population.Urban
+", color = TRUE)
+
+
+```
+
